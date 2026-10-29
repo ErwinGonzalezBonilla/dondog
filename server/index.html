@@ -8,11 +8,16 @@
 <meta name="theme-color" content="#0E0D0B">
 <meta property="og:title" content="Don Dog · Pet shop en Vitacura">
 <meta property="og:description" content="Alimentos, juguetes, accesorios y cosmética para tu mascota. Despacho en 24 h.">
-<meta property="og:image" content="img/tienda.webp">
-<link rel="icon" href="img/logo.webp" type="image/webp">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_CL">
+<meta property="og:image" content="/img/og-tienda.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/img/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
 <div class="barra"><div class="wrap">
@@ -23,7 +28,7 @@
 
 <header class="top">
   <div class="wrap hbar">
-    <button class="brand" id="goHome" aria-label="Inicio Don Dog"><img src="img/logo.webp" alt="Logo Don Dog"><span>Don Dog</span></button>
+    <button class="brand" id="goHome" aria-label="Inicio Don Dog"><img src="/img/logo.webp" alt="Logo Don Dog"><span>Don Dog</span></button>
     <form class="search" id="searchForm" role="search">
       <input id="q" type="text" placeholder="Busca alimento, juguetes, collares…" autocomplete="off" aria-label="Buscar productos">
       <button aria-label="Buscar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
@@ -41,16 +46,17 @@
 
 <footer class="pie"><div class="wrap">
   <div class="pie__grid">
-    <div><img class="pie__logo" src="img/logo.webp" alt="Don Dog"><p class="pie__eslogan display">Consentir es <span>cosa de Dones</span></p></div>
+    <div><img class="pie__logo" src="/img/logo.webp" alt="Don Dog"><p class="pie__eslogan display">Consentir es <span>cosa de Dones</span></p></div>
     <div><h4>Tienda</h4><ul><li><button data-cat="alimentos">Alimentos</button></li><li><button data-cat="snacks">Snacks</button></li><li><button data-cat="juguetes">Juguetes</button></li><li><button data-cat="accesorios">Accesorios</button></li><li><button data-cat="cosmetica">Cosmética</button></li></ul></div>
-    <div><h4>Visítanos</h4><p>Candelaria Goyenechea 3820, local 165<br>Lo Castillo, Vitacura, Santiago</p><p style="margin-top:12px">Instagram <span class="mono">@dondog.cl</span></p></div>
+    <div><h4>Ayuda</h4><ul><li><a href="/seguimiento" data-goto="seguimiento">Seguir mi pedido</a></li><li><a href="/#contacto" data-goto="contacto">Contacto</a></li><li><a href="/devoluciones" data-goto="devoluciones">Cambios y devoluciones</a></li><li><a href="/terminos" data-goto="terminos">Términos y condiciones</a></li><li><a href="/privacidad" data-goto="privacidad">Privacidad</a></li></ul></div>
+    <div><h4>Visítanos</h4><p>Candelaria Goyenechea 3820, local 165<br>Lo Castillo, Vitacura, Santiago</p><p style="margin-top:12px">Instagram <a class="mono" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener">@dondog.cl</a></p></div>
   </div>
-  <div class="pie__base"><span>© Don Dog · Pet shop</span><span>Pedidos preparados en 24 h</span></div>
+  <div class="pie__base"><span>© Don Dog · Pet shop</span><span>Pedidos preparados en 24 h · <a href="/admin" data-goto="admin">Acceso dueño</a></span></div>
 </div></footer>
 
-<button class="fab" id="fab" hidden><span class="fab__txt">Pregúntale al Don</span><img src="img/el-don-mini.webp" alt=""></button>
+<button class="fab" id="fab" hidden><span class="fab__txt">Pregúntale al Don</span><img src="/img/el-don-mini.webp" alt=""></button>
 <div class="chat" id="chat" hidden>
-  <div class="dhead"><h2 class="display chathead" style="font-size:24px"><img src="img/el-don-mini.webp" alt="">El Don te asesora</h2><button class="x" id="chatX" aria-label="Cerrar">✕</button></div>
+  <div class="dhead"><h2 class="display chathead" style="font-size:24px"><img src="/img/el-don-mini.webp" alt="">El Don te asesora</h2><button class="x" id="chatX" aria-label="Cerrar">✕</button></div>
   <div class="msgs" id="msgs"><div class="bubble don">Cuéntame de tu mascota: especie, edad, tamaño o lo que necesitas. Te recomiendo productos que tenemos en stock.</div></div>
   <form id="chatForm"><input id="chatIn" type="text" placeholder="Ej: snack para cachorro que muerde todo" aria-label="Pregunta"><button>Enviar</button></form>
 </div>
@@ -58,7 +64,6 @@
 <div id="layer"></div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="js/demo-data.js"></script>
-<script src="js/app.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>

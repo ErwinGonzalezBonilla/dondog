@@ -27,6 +27,7 @@
   --ok:#3DBB85; --ok-soft:#14301F; --warn:#F2B145; --warn-soft:#3A2C12; --bad:#FF6B66; --bad-soft:#3A1816;
   --hero:#000000; --hero-fg:#F3EEE7; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -422,3 +423,16 @@ header.top nav.cats .navpanel button:hover{background:var(--wood-soft);color:var
 .donbox .chatprev{width:100%;padding-top:58px}
 @media (prefers-reduced-motion:no-preference){.donbox__img{animation:rodar 4s ease-in-out infinite}@keyframes rodar{0%,100%{transform:translateX(-8px) rotate(-2deg)}50%{transform:translateX(8px) rotate(2deg)}}}
 .empty__don{width:120px;height:auto;margin:0 auto 10px;display:block}
+
+/* ---------- tienda con servidor: pie, páginas legales y enlaces ---------- */
+.pie__grid{grid-template-columns:1.4fr 1fr 1fr 1fr}
+.pie ul a{color:inherit;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.pie ul a:hover,.pie__base a:hover{color:#F0558A}
+.pie p a,.pie__base a{color:inherit}
+@media (max-width:960px){.pie__grid{grid-template-columns:1fr 1fr}.pie__grid>div:first-child{grid-column:1/-1}}
+.card a.ph{color:inherit;text-decoration:none}
+.legal h3{font-size:16px;margin:8px 0 0}
+.legal p{margin:0;line-height:1.6}
+.legal a,.check a{color:var(--accent)}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--ink)}
+.order a{color:inherit}

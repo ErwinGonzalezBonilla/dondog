@@ -12,3 +12,6 @@ node_modules/
 dist/
 .env
 .env.*
+
+# Datos de la tienda (base de datos, fotos subidas, correos de prueba): respaldar, no versionar
+server/data/

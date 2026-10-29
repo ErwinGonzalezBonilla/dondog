@@ -1,0 +1,10 @@
+{
+  "name": "Don Dog · Pet shop",
+  "short_name": "Don Dog",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0D0B",
+  "theme_color": "#0E0D0B",
+  "lang": "es-CL",
+  "icons": [{ "src": "/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }, { "src": "/img/logo.webp", "sizes": "320x320", "type": "image/webp" }]
+}
