@@ -128,3 +128,24 @@ test("SEO: ficha de producto con datos estructurados y sitemap", async () => {
   assert.match(p.text, /"@type":"Product"/);
   assert.match((await call("GET", "/sitemap.xml")).text, /\/producto\/collar/);
 });
+
+test("venta en tienda: descuenta stock, calcula vuelto y aparece en el Excel", async () => {
+  await call("POST", "/api/admin/login", { email: "admin@test.cl", password: "claveSegura123" });
+  await call("PUT", "/api/admin/products/a1", { name: "Collar", category: "accesorios", price: 10000, stock: 4, barcode: "7801234567890" }, { admin: true });
+  const dup = await call("POST", "/api/admin/products", { name: "Otro", category: "snacks", price: 1000, barcode: "7801234567890" }, { admin: true });
+  assert.equal(dup.status, 400);
+  const over = await call("POST", "/api/admin/ventas-tienda", { items: [{ id: "a1", qty: 9 }], payment: "efectivo" }, { admin: true });
+  assert.equal(over.status, 409);
+  const r = await call("POST", "/api/admin/ventas-tienda", { items: [{ id: "a1", qty: 2 }], payment: "efectivo", discount: 1000, received: 20000, customer: { email: "cliente@test.cl" } }, { admin: true });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.order.total, 19000);
+  assert.equal(r.json.order.channel, "tienda");
+  assert.equal(r.json.order.paymentDetail.change, 1000);
+  assert.equal(await stockOf("a1"), 2);
+  assert.ok(await waitMail("comprobanteTienda"));
+  const csv = await call("GET", "/api/admin/orders.csv", null, { admin: true });
+  assert.match(csv.text, new RegExp(`"${r.json.order.id}";"Tienda"`));
+  // Anular la venta devuelve el stock.
+  await call("PATCH", `/api/admin/orders/${r.json.order.id}`, { status: "cancelado" }, { admin: true });
+  assert.equal(await stockOf("a1"), 4);
+});

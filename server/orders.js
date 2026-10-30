@@ -92,6 +92,61 @@ async function createOrder({ items, customer, delivery, payment }) {
   return getOrder(id);
 }
 
+// Venta presencial en la tienda: descuenta stock y queda registrada como pagada y entregada.
+const STORE_PAYMENTS = ["efectivo", "debito", "credito", "transferencia"];
+async function createStoreSale({ items, payment, discount, received, customer, seller }) {
+  if (!STORE_PAYMENTS.includes(payment)) throw new OrderError("Elige cómo pagó el cliente.");
+  if (!Array.isArray(items) || !items.length) throw new OrderError("Agrega al menos un producto.");
+  const merged = new Map();
+  for (const it of items) {
+    const q = parseInt(it?.qty, 10);
+    if (!it?.id || !(q > 0) || q > 999) throw new OrderError("Cantidad inválida.");
+    merged.set(String(it.id), (merged.get(String(it.id)) || 0) + q);
+  }
+  const c = {
+    name: clean(customer?.name, 120) || "Cliente en tienda", email: clean(customer?.email, 160).toLowerCase(),
+    phone: clean(customer?.phone, 40), rut: clean(customer?.rut, 20), addr: "", comuna: "", notes: "",
+  };
+  if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c.email)) throw new OrderError("El correo del cliente no es válido.");
+
+  const id = await tx(async t => {
+    const lines = [];
+    for (const [pid, qty] of merged) {
+      const p = rowToProduct(await t.get("SELECT * FROM products WHERE id = ?", [pid]));
+      if (!p) throw new OrderError("Un producto del ticket ya no existe.", 409);
+      if (p.stock < qty) throw new OrderError(`Solo hay ${p.stock} de “${p.name}” en stock.`, 409);
+      lines.push({ id: p.id, name: p.name, qty, price: p.price });
+    }
+    const subtotal = lines.reduce((a, l) => a + l.price * l.qty, 0);
+    const disc = Math.min(subtotal, Math.max(0, Math.round(Number(discount) || 0)));
+    const total = subtotal - disc;
+    const detail = { seller };
+    if (payment === "efectivo") {
+      const r = Math.round(Number(received) || 0);
+      if (r && r < total) throw new OrderError("El monto recibido es menor que el total.");
+      if (r) Object.assign(detail, { received: r, change: r - total });
+    }
+    const now = Date.now();
+    for (const l of lines) {
+      const r = await t.run("UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ? AND stock >= ?", [l.qty, now, l.id, l.qty]);
+      if (r.changes !== 1) throw new OrderError(`Se agotó “${l.name}”.`, 409);
+    }
+    let oid = newOrderId();
+    while (await t.get("SELECT 1 FROM orders WHERE id = ?", [oid])) oid = newOrderId();
+    await t.run(`INSERT INTO orders(id, access_key, created_at, deadline, status, payment_method, payment_status, payment_ref, payment_detail, paid_at,
+      delivery, customer, items, subtotal, shipping, total, status_at, channel, discount)
+      VALUES(?, ?, ?, ?, 'retirado', ?, 'pagado', ?, ?, ?, 'retiro', ?, ?, ?, 0, ?, ?, 'tienda', ?)`,
+      [oid, crypto.randomBytes(12).toString("base64url"), now, now, payment, "venta en tienda", JSON.stringify(detail), now,
+        JSON.stringify(c), JSON.stringify(lines), subtotal, total, now, disc]);
+    return oid;
+  });
+  const o = await getOrder(id);
+  if (o.customer.email) mail.sendLater("comprobanteTienda", o);
+  pushToSheets(o);
+  background(checkLowStock(o.items.map(i => i.id)));
+  return o;
+}
+
 async function restoreStock(t, o) {
   for (const i of o.items) await t.run("UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?", [i.qty, Date.now(), i.id]);
 }
@@ -184,7 +239,7 @@ function pushToSheets(o) {
   const payload = {
     pedido: o.id, fecha: new Date(o.createdAt).toISOString(), plazo: new Date(o.deadline).toISOString(), estado: o.status,
     cliente: c.name, telefono: c.phone, correo: c.email, rut: c.rut, entrega: o.delivery, direccion: c.addr, comuna: c.comuna,
-    pago: o.payment, total: o.total, items: o.items.map(i => ({ producto: i.name, cantidad: i.qty, precio: i.price })),
+    pago: o.payment, canal: o.channel, total: o.total, items: o.items.map(i => ({ producto: i.name, cantidad: i.qty, precio: i.price })),
   };
   background(fetch(config.sheetsWebhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), redirect: "follow" })
     .catch(e => console.error("[sheets] No se pudo enviar el pedido", o.id, e.message)));
@@ -206,6 +261,6 @@ function transferInfo() {
 }
 
 module.exports = {
-  OrderError, STATUSES, createOrder, getOrder, markPaid, markFailed, setStatus, sweepExpired,
+  OrderError, STATUSES, STORE_PAYMENTS, createOrder, createStoreSale, getOrder, markPaid, markFailed, setStatus, sweepExpired,
   checkLowStock, publicOrder, transferInfo, pushToSheets,
 };

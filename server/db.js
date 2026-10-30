@@ -73,6 +73,15 @@ function init() {
     ready = (async () => {
       if (url.startsWith("file:")) await client.execute("PRAGMA journal_mode = WAL");
       await client.executeMultiple(SCHEMA);
+      // Columnas agregadas después de la primera versión (bases ya creadas las reciben aquí).
+      for (const sql of [
+        "ALTER TABLE products ADD COLUMN barcode TEXT DEFAULT ''",
+        "ALTER TABLE orders ADD COLUMN channel TEXT DEFAULT 'web'",
+        "ALTER TABLE orders ADD COLUMN discount INTEGER DEFAULT 0",
+      ]) {
+        try { await client.execute(sql); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+      }
+      await client.execute("CREATE INDEX IF NOT EXISTS products_barcode ON products(barcode)");
     })().catch(e => { ready = null; throw e; });
   }
   return ready;
@@ -124,7 +133,7 @@ function rowToProduct(r) {
     id: r.id, slug: r.slug, name: r.name, brand: r.brand, category: r.category, pet: r.pet,
     price: num(r.price), oldPrice: num(r.old_price), description: r.description,
     tags: safeJson(r.tags, []), image: r.image, featured: !!r.featured, active: !!r.active,
-    stock: num(r.stock), createdAt: num(r.created_at), updatedAt: num(r.updated_at),
+    stock: num(r.stock), barcode: r.barcode || "", createdAt: num(r.created_at), updatedAt: num(r.updated_at),
   };
 }
 function rowToOrder(r) {
@@ -135,6 +144,7 @@ function rowToOrder(r) {
     paymentDetail: safeJson(r.payment_detail, {}), paidAt: num(r.paid_at), holdUntil: num(r.hold_until),
     delivery: r.delivery, customer: safeJson(r.customer, {}), items: safeJson(r.items, []),
     subtotal: num(r.subtotal), shipping: num(r.shipping), total: num(r.total), statusAt: num(r.status_at), tracking: r.tracking,
+    channel: r.channel || "web", discount: num(r.discount) || 0,
   };
 }
 function safeJson(s, d) { try { return JSON.parse(s); } catch { return d; } }

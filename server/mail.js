@@ -19,7 +19,7 @@ const outbox = path.join(config.dataDir, "outbox");
 const clp = n => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Math.round(n || 0));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fecha = ms => new Date(ms).toLocaleString("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
-const PAY_NAMES = { webpay: "Webpay (débito / crédito)", mercadopago: "Mercado Pago", transferencia: "Transferencia bancaria" };
+const PAY_NAMES = { webpay: "Webpay (débito / crédito)", mercadopago: "Mercado Pago", transferencia: "Transferencia bancaria", efectivo: "Efectivo", debito: "Tarjeta de débito", credito: "Tarjeta de crédito" };
 
 // ---------- plantilla base ----------
 function layout({ preheader = "", title, body }) {
@@ -51,7 +51,8 @@ function itemsTable(o) {
   const rows = o.items.map(i => `<tr><td style="padding:8px 0;border-bottom:1px solid #EFE6DA;font-size:14px">${i.qty} × ${esc(i.name)}</td><td align="right" style="padding:8px 0;border-bottom:1px solid #EFE6DA;font-size:14px;white-space:nowrap">${clp(i.qty * i.price)}</td></tr>`).join("");
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px">${rows}
   <tr><td style="padding:8px 0 2px;font-size:14px;color:#76685A">Subtotal</td><td align="right" style="padding:8px 0 2px;font-size:14px;color:#76685A">${clp(o.subtotal)}</td></tr>
-  <tr><td style="padding:2px 0;font-size:14px;color:#76685A">${o.delivery === "retiro" ? "Retiro en tienda" : "Despacho"}</td><td align="right" style="padding:2px 0;font-size:14px;color:#76685A">${o.shipping ? clp(o.shipping) : "Gratis"}</td></tr>
+  ${o.discount ? `<tr><td style="padding:2px 0;font-size:14px;color:#76685A">Descuento</td><td align="right" style="padding:2px 0;font-size:14px;color:#76685A">−${clp(o.discount)}</td></tr>` : ""}
+  ${o.channel === "tienda" ? "" : `<tr><td style="padding:2px 0;font-size:14px;color:#76685A">${o.delivery === "retiro" ? "Retiro en tienda" : "Despacho"}</td><td align="right" style="padding:2px 0;font-size:14px;color:#76685A">${o.shipping ? clp(o.shipping) : "Gratis"}</td></tr>`}
   <tr><td style="padding:8px 0;font-size:17px;font-weight:bold">Total</td><td align="right" style="padding:8px 0;font-size:17px;font-weight:bold">${clp(o.total)}</td></tr></table>`;
 }
 function deliveryBlock(o) {
@@ -148,6 +149,19 @@ const templates = {
       }),
     };
   },
+
+  // Comprobante de compra presencial (si el cliente dejó su correo).
+  comprobanteTienda: o => ({
+    to: o.customer.email,
+    subject: `Tu compra en Don Dog · ${o.id}`,
+    html: layout({
+      preheader: `Gracias por tu compra de ${clp(o.total)}.`, title: "¡Gracias por tu compra!",
+      body: p(`Este es el detalle de tu compra en la tienda Don Dog del ${esc(fecha(o.createdAt))}.`)
+        + itemsTable(o)
+        + p(`<span style="font-size:13px;color:#76685A">Pago: ${esc(PAY_NAMES[o.payment] || o.payment)}${o.paymentDetail?.received ? ` · recibido ${clp(o.paymentDetail.received)} · vuelto ${clp(o.paymentDetail.change)}` : ""} · N° ${esc(o.id)}<br>Este correo es un comprobante de compra y no reemplaza a la boleta.</span>`)
+        + btn(config.siteUrl, "Visita nuestra tienda online"),
+    }),
+  }),
 
   // Aviso al dueño: stock bajo.
   avisoStockBajo: products => ({

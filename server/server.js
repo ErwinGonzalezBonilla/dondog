@@ -29,7 +29,8 @@ app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  // La cámara se permite solo para este sitio (lector de códigos de barras en la venta en tienda).
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
   res.setHeader("Content-Security-Policy", [
     "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data: blob: https:", "connect-src 'self'",
@@ -245,6 +246,12 @@ admin.get("/orders", async (req, res) => {
   const rows = (await db.all("SELECT * FROM orders WHERE created_at >= ? ORDER BY created_at DESC", [Date.now() - days * 864e5])).map(rowToOrder);
   res.json({ orders: rows });
 });
+// Venta presencial en la tienda (punto de venta del panel).
+admin.post("/ventas-tienda", async (req, res) => {
+  const b = req.body || {};
+  const o = await orders.createStoreSale({ items: b.items, payment: b.payment, discount: b.discount, received: b.received, customer: b.customer, seller: req.admin.email });
+  res.json({ order: o });
+});
 admin.patch("/orders/:id", async (req, res) => res.json({ order: await orders.setStatus(req.params.id, String(req.body?.status || ""), { tracking: req.body?.tracking }) }));
 admin.post("/orders/:id/confirmar-pago", async (req, res) => {
   const o = await orders.getOrder(req.params.id);
@@ -254,17 +261,17 @@ admin.post("/orders/:id/confirmar-pago", async (req, res) => {
 admin.post("/orders/:id/reenviar-correo", async (req, res) => {
   const o = await orders.getOrder(req.params.id);
   if (!o) return res.status(404).json({ error: "Pedido no encontrado." });
-  const kind = o.paymentStatus === "pagado" ? "pedidoConfirmado" : o.payment === "transferencia" && o.status !== "cancelado" ? "pedidoRecibidoTransferencia" : null;
+  const kind = o.channel === "tienda" ? (o.customer.email ? "comprobanteTienda" : null) : o.paymentStatus === "pagado" ? "pedidoConfirmado" : o.payment === "transferencia" && o.status !== "cancelado" ? "pedidoRecibidoTransferencia" : null;
   if (!kind) return res.status(400).json({ error: "Este pedido no tiene correo para reenviar." });
   const r = await mail.send(kind, o);
   if (r.ok === false) return res.status(502).json({ error: "No se pudo enviar: " + r.error });
   res.json({ ok: true });
 });
 admin.get("/orders.csv", async (req, res) => {
-  const rows = [["Pedido", "Fecha", "Plazo", "Estado", "Pago", "Estado pago", "Cliente", "RUT", "Teléfono", "Correo", "Entrega", "Dirección", "Comuna", "Producto", "Cantidad", "Precio unit.", "Despacho", "Total pedido"]];
+  const rows = [["Pedido", "Canal", "Fecha", "Plazo", "Estado", "Pago", "Estado pago", "Cliente", "RUT", "Teléfono", "Correo", "Entrega", "Dirección", "Comuna", "Producto", "Cantidad", "Precio unit.", "Despacho", "Descuento", "Total pedido"]];
   const f = ms => ms ? new Date(ms).toLocaleString("es-CL", { timeZone: "America/Santiago" }) : "";
   for (const o of (await db.all("SELECT * FROM orders ORDER BY created_at DESC")).map(rowToOrder))
-    for (const i of o.items) rows.push([o.id, f(o.createdAt), f(o.deadline), o.status, o.payment, o.paymentStatus, o.customer.name, o.customer.rut, o.customer.phone, o.customer.email, o.delivery, o.customer.addr, o.customer.comuna, i.name, i.qty, i.price, o.shipping, o.total]);
+    for (const i of o.items) rows.push([o.id, o.channel === "tienda" ? "Tienda" : "Web", f(o.createdAt), f(o.deadline), o.status, o.payment, o.paymentStatus, o.customer.name, o.customer.rut, o.customer.phone, o.customer.email, o.delivery, o.customer.addr, o.customer.comuna, i.name, i.qty, i.price, o.shipping, o.discount, o.total]);
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="pedidos-dondog-${new Date().toISOString().slice(0, 10)}.csv"`);

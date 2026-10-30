@@ -22,7 +22,7 @@ const paws=n=>PAW.repeat(n);
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const fecha=ms=>new Date(ms).toLocaleString("es-CL",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
-const PAY_NAMES={webpay:"Webpay",mercadopago:"Mercado Pago",transferencia:"Transferencia"};
+const PAY_NAMES={webpay:"Webpay",mercadopago:"Mercado Pago",transferencia:"Transferencia",efectivo:"Efectivo",debito:"Débito",credito:"Crédito"};
 const STATUS_NAMES={pendiente_pago:"Esperando pago",nuevo:"Pagado · por preparar",preparando:"Preparando",listo:"Listo",enviado:"En camino",retirado:"Retirado",entregado:"Entregado",cancelado:"Cancelado"};
 
 const S={products:[],config:{slaHours:24,lowStock:5,freeShip:40000,shipCost:3990,shipComunas:""},payments:{},store:{},ai:false,orders:[],
@@ -429,29 +429,30 @@ function sevOf(o){if(["enviado","entregado","retirado","cancelado"].includes(o.s
 function leftTxt(ms){const neg=ms<0;ms=Math.abs(ms);const h=Math.floor(ms/3600e3),m=Math.floor(ms%3600e3/60e3);return (neg?"Atrasado ":"")+`${h} h ${String(m).padStart(2,"0")} min`}
 function renderAdmin(){
   const a=$("#admin");if(!a||a.hidden)return;
-  const tabs=[["pedidos","Pedidos"],["productos","Productos"],["stock","Stock"],["ajustes","Ajustes"]];
+  const tabs=[["vender","Vender"],["pedidos","Pedidos"],["productos","Productos"],["stock","Stock"],["ajustes","Ajustes"]];
   a.innerHTML=`<div class="abar"><img src="${LOGO}" alt=""><h2 class="display">Panel Don Dog</h2>
    <div class="tabs">${tabs.map(([id,n])=>`<button data-tab="${id}" class="${S.adminTab===id?"on":""}">${n}</button>`).join("")}</div>
    <button class="x" id="admX" aria-label="Volver a la tienda" title="Volver a la tienda">✕</button></div><div class="abody"><div class="wrap" id="abody"></div></div>`;
   a.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.tab;renderAdmin()});
   $("#admX").onclick=closeAdmin;
-  ({pedidos:admOrders,productos:admProducts,stock:admStock,ajustes:admSettings})[S.adminTab]();
+  ({vender:admSell,pedidos:admOrders,productos:admProducts,stock:admStock,ajustes:admSettings})[S.adminTab]();
 }
 function admOrders(){
   const os=S.orders.slice().sort((a,b)=>{const order={bad:0,warn:1,ok:2,pay:3,done:4};return order[sevOf(a)]-order[sevOf(b)]||(sevOf(a)==="done"?b.createdAt-a.createdAt:a.deadline-b.deadline)});
   const open=os.filter(o=>["ok","warn","bad"].includes(sevOf(o))),late=open.filter(o=>sevOf(o)==="bad").length,soon=open.filter(o=>sevOf(o)==="warn").length,toPay=os.filter(o=>o.status==="pendiente_pago");
   const today=os.filter(o=>o.paymentStatus==="pagado"&&new Date(o.paidAt||o.createdAt).toDateString()===new Date().toDateString());
-  const filt={activos:o=>sevOf(o)!=="done"&&sevOf(o)!=="pay",porpagar:o=>o.status==="pendiente_pago",cerrados:o=>sevOf(o)==="done",todos:()=>true}[S.orderFilter];
+  const filt={activos:o=>sevOf(o)!=="done"&&sevOf(o)!=="pay",porpagar:o=>o.status==="pendiente_pago",tienda:o=>o.channel==="tienda",cerrados:o=>sevOf(o)==="done",todos:()=>true}[S.orderFilter];
+  const sumOf=l=>l.reduce((s,o)=>s+o.total,0),todayWeb=today.filter(o=>o.channel!=="tienda"),todayStore=today.filter(o=>o.channel==="tienda");
   const list=os.filter(filt);
   $("#abody").innerHTML=`<div class="kpis">
     <div class="kpi"><span class="eyebrow">Por preparar</span><b>${open.length}</b></div>
     <div class="kpi ${late?"alert":""}"><span class="eyebrow">Atrasados (+${S.config.slaHours} h)</span><b>${late}</b></div>
     <div class="kpi"><span class="eyebrow">Vencen en &lt; 6 h</span><b>${soon}</b></div>
-    <div class="kpi"><span class="eyebrow">Ventas de hoy</span><b>${clp(today.reduce((s,o)=>s+o.total,0))}</b></div></div>
-   <div class="bar"><div class="chips">${[["activos","Por preparar"],["porpagar",`Esperando pago (${toPay.length})`],["cerrados","Cerrados"],["todos","Todos"]].map(([k,n])=>`<button class="chip ${S.orderFilter===k?"on":""}" data-of="${k}">${n}</button>`).join("")}</div>
+    <div class="kpi"><span class="eyebrow">Ventas de hoy</span><b>${clp(sumOf(today))}</b><span class="note">Web ${clp(sumOf(todayWeb))} · Tienda ${clp(sumOf(todayStore))}</span></div></div>
+   <div class="bar"><div class="chips">${[["activos","Por preparar"],["porpagar",`Esperando pago (${toPay.length})`],["tienda","Ventas en tienda"],["cerrados","Cerrados"],["todos","Todos"]].map(([k,n])=>`<button class="chip ${S.orderFilter===k?"on":""}" data-of="${k}">${n}</button>`).join("")}</div>
    <a class="btn" href="/api/admin/orders.csv" style="margin-left:auto">Descargar Excel (CSV)</a><button class="btn" id="reloadO">Actualizar</button></div>
    ${list.length?list.map(o=>{const sv=sevOf(o);return `<div class="order sev-${sv==="pay"?"warn":sv}"><div style="min-width:0">
-     <div class="bar"><b class="mono">${esc(o.id)}</b><span class="pill ${sv==="done"?"mut":sv==="pay"?"warn":sv}">${esc(STATUS_NAMES[o.status]||o.status)}</span><span class="pill mut">${o.delivery==="retiro"?"Retiro en tienda":"Despacho"}</span><span class="note">${new Date(o.createdAt).toLocaleString("es-CL")}</span></div>
+     <div class="bar"><b class="mono">${esc(o.id)}</b><span class="pill ${sv==="done"?"mut":sv==="pay"?"warn":sv}">${esc(STATUS_NAMES[o.status]||o.status)}</span><span class="pill mut">${o.channel==="tienda"?"Venta en tienda":o.delivery==="retiro"?"Retiro en tienda":"Despacho"}</span><span class="note">${new Date(o.createdAt).toLocaleString("es-CL")}</span></div>
      <div style="margin-top:6px"><b>${esc(o.customer?.name)}</b> · <a class="mono" href="tel:${esc(o.customer?.phone)}">${esc(o.customer?.phone)}</a> · <a href="mailto:${esc(o.customer?.email)}">${esc(o.customer?.email)}</a>${o.customer?.rut?` · RUT ${esc(o.customer.rut)}`:""}${o.delivery==="despacho"?`<br>${esc(o.customer?.addr)}, ${esc(o.customer?.comuna)}`:""}${o.customer?.notes?`<br><i>${esc(o.customer.notes)}</i>`:""}</div>
      <ul>${o.items.map(i=>`<li><b class="num">${i.qty}×</b> ${esc(i.name)} <span class="note num">${clp(i.price*i.qty)}</span></li>`).join("")}</ul>
      <div class="note num" style="margin-top:6px">Total ${clp(o.total)}${o.shipping?` (despacho ${clp(o.shipping)})`:""} · ${esc(PAY_NAMES[o.payment]||o.payment)} · pago ${esc(o.paymentStatus)}${o.paymentDetail?.authorizationCode?` · aut. ${esc(o.paymentDetail.authorizationCode)}`:""}${o.tracking?` · seguimiento ${esc(o.tracking)}`:""}</div>
@@ -499,6 +500,7 @@ function productForm(id){
     <label>Precio antes (opcional)<input id="pOld" type="number" min="0" value="${esc(p.oldPrice||"")}"></label>
     <label class="full">Descripción<textarea id="pDesc" rows="4">${esc(p.description)}</textarea></label>
     <label class="full">Etiquetas (separadas por coma)<input id="pTags" type="text" value="${esc((p.tags||[]).join(", "))}"></label>
+    <label class="full">Código de barras o SKU (opcional, para vender en tienda)<input id="pCode" type="text" inputmode="numeric" autocomplete="off" value="${esc(p.barcode||"")}"></label>
     <label class="check"><input id="pFeat" type="checkbox" ${p.featured?"checked":""}> Destacado en portada</label>
     <label class="check"><input id="pAct" type="checkbox" ${p.active!==false?"checked":""}> Visible en la tienda</label>
    </div><div style="display:flex;flex-direction:column;gap:10px">
@@ -529,13 +531,114 @@ function productForm(id){
       if(imgFile){const fd=new FormData();fd.append("image",imgFile);image=(await api("/api/admin/upload",{method:"POST",form:fd})).url}
       else if($("#pUrl").value.trim())image=$("#pUrl").value.trim();
       else if(/^https:/.test(image))image="";
-      const data={name,brand:$("#pBrand").value.trim(),category:$("#pCat").value,pet:$("#pPet").value,price,oldPrice:+$("#pOld").value||0,description:$("#pDesc").value.trim(),tags:$("#pTags").value.split(",").map(s=>s.trim()).filter(Boolean),featured:$("#pFeat").checked,active:$("#pAct").checked,image,stock:Math.max(0,parseInt($("#pStock").value)||0)};
+      const data={name,brand:$("#pBrand").value.trim(),category:$("#pCat").value,pet:$("#pPet").value,price,oldPrice:+$("#pOld").value||0,description:$("#pDesc").value.trim(),tags:$("#pTags").value.split(",").map(s=>s.trim()).filter(Boolean),featured:$("#pFeat").checked,active:$("#pAct").checked,image,stock:Math.max(0,parseInt($("#pStock").value)||0),barcode:$("#pCode").value.trim()};
       const r=await api(id?`/api/admin/products/${encodeURIComponent(id)}`:"/api/admin/products",{method:id?"PUT":"POST",body:data});
       S.adminProducts=id?S.adminProducts.map(x=>x.id===id?r.product:x):[...S.adminProducts,r.product];
       toast("Producto guardado");admProducts();
     }catch(e){$("#pErr").textContent=e.message;btn.disabled=false;btn.textContent="Guardar"}
   };
   const del=$("#pDel");if(del)del.onclick=async()=>{if(del.dataset.sure){try{await api(`/api/admin/products/${encodeURIComponent(id)}`,{method:"DELETE"});S.adminProducts=S.adminProducts.filter(x=>x.id!==id);toast("Producto eliminado");admProducts()}catch(e){toast(e.message)}}else{del.dataset.sure=1;del.textContent="Confirmar eliminar";del.style.borderColor="var(--bad)";del.style.color="var(--bad)"}};
+}
+/* ---------- VENTA EN TIENDA (punto de venta) ---------- */
+const POS_PAY=[["efectivo","Efectivo"],["debito","Débito"],["credito","Crédito"],["transferencia","Transferencia"]];
+S.pos=lsGet("dd_pos",null)||{items:{},payment:"efectivo",discount:"",received:"",customer:{}};
+function posSave(){lsSet("dd_pos",S.pos)}
+const norm=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+function posProd(id){return S.adminProducts.find(p=>p.id===id)}
+function posLines(){return Object.entries(S.pos.items).map(([id,q])=>({p:posProd(id),q})).filter(x=>x.p)}
+function posTotals(){const sub=posLines().reduce((s,x)=>s+x.p.price*x.q,0),disc=Math.min(sub,Math.max(0,Math.round(+S.pos.discount||0)));return{sub,disc,total:sub-disc}}
+function posAdd(id,q=1){const p=posProd(id);if(!p)return;const have=S.pos.items[id]||0;if(have+q>p.stock){toast(p.stock?`Solo hay ${p.stock} en stock`:"Sin stock");return}S.pos.items[id]=have+q;posSave();posTicket();toast(`+1 ${p.name}`)}
+function posSearch(q){const t=norm(q).trim();let ps=S.adminProducts.slice();
+  if(t)ps=ps.filter(p=>p.barcode===q.trim()||norm(p.name+" "+(p.brand||"")+" "+(p.tags||[]).join(" ")+" "+(p.barcode||"")).includes(t));
+  return ps.sort((a,b)=>(b.stock>0)-(a.stock>0)||a.name.localeCompare(b.name)).slice(0,t?40:24)}
+function admSell(){
+  $("#abody").innerHTML=`<div class="pos">
+   <div class="pos__left">
+     <div class="pos__search"><input id="posQ" type="search" placeholder="Busca por nombre, marca o código de barras…" autocomplete="off" aria-label="Buscar producto"><button class="btn dark" id="posScan" type="button">${icon("M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M7 9v6M10 9v6M13 9v6M16 9v6",2)}<span>Escanear</span></button></div>
+     <div class="pos__res" id="posRes"></div>
+   </div>
+   <div class="panel pos__ticket" id="posTicket"></div></div>
+   <button class="pos__bar" id="posBar" type="button" hidden></button>`;
+  $("#posBar").onclick=()=>$("#posTicket").scrollIntoView({behavior:"smooth",block:"start"});
+  const q=$("#posQ"),res=()=>{$("#posRes").innerHTML=posSearch(q.value).map(p=>`<button class="pos__item" data-pos="${p.id}" ${p.stock<=0?"disabled":""}><span class="thumb">${phHTML(p)}</span><span class="pos__name"><b>${esc(p.name)}</b><span class="note">${esc(p.brand||catById[p.category]?.name||"")}${p.barcode?` · <span class="mono">${esc(p.barcode)}</span>`:""}</span></span><span class="pos__price"><b class="num">${clp(p.price)}</b><span class="pill ${p.stock<=0?"bad":p.stock<=S.config.lowStock?"warn":"ok"}">${p.stock<=0?"Agotado":p.stock+" en stock"}</span></span></button>`).join("")||`<div class="empty"><b>Sin resultados</b>Prueba otra palabra o revisa el código.</div>`};
+  q.oninput=res;res();
+  // Enter: un lector de códigos USB escribe el código y presiona Enter.
+  q.onkeydown=e=>{if(e.key!=="Enter")return;e.preventDefault();const code=q.value.trim(),exact=S.adminProducts.find(p=>p.barcode&&p.barcode===code),list=posSearch(code);
+    const hit=exact||(list.length===1?list[0]:null);if(hit){posAdd(hit.id);q.value="";res()}else if(code)toast("Elige el producto de la lista")};
+  $("#posRes").onclick=e=>{const b=e.target.closest("[data-pos]");if(b){posAdd(b.dataset.pos);q.focus()}};
+  $("#posScan").onclick=posScanner;
+  posTicket();
+  if(matchMedia("(pointer:fine)").matches)q.focus();
+}
+function posTicket(){
+  const el=$("#posTicket");if(!el)return;const lines=posLines(),t=posTotals(),cash=S.pos.payment==="efectivo",rec=Math.round(+S.pos.received||0);
+  el.innerHTML=`<div class="bar"><h3 style="margin:0">Venta en tienda</h3>${lines.length?`<button class="btn sm" id="posClear" style="margin-left:auto">Vaciar</button>`:""}</div>
+   ${lines.length?lines.map(({p,q})=>`<div class="pos__line"><div style="min-width:0"><b>${esc(p.name)}</b><div class="note num">${clp(p.price)} c/u · stock ${p.stock}</div></div>
+     <div class="qty"><button data-pq="${p.id}" data-d="-1" aria-label="Menos">−</button><span class="num">${q}</span><button data-pq="${p.id}" data-d="1" aria-label="Más">+</button></div><b class="num">${clp(p.price*q)}</b></div>`).join("")
+    :`<p class="note" style="margin:0">Busca o escanea productos para agregarlos al ticket.</p>`}
+   <div class="row"><span>Subtotal</span><span class="num">${clp(t.sub)}</span></div>
+   <label class="pos__inline">Descuento ($)<input id="posDisc" type="number" min="0" inputmode="numeric" value="${esc(S.pos.discount)}" placeholder="0"></label>
+   <div class="row total"><span>Total</span><span class="num">${clp(t.total)}</span></div>
+   <span class="eyebrow">Medio de pago</span>
+   <div class="chips">${POS_PAY.map(([k,n])=>`<button class="chip ${S.pos.payment===k?"on":""}" data-pp="${k}">${n}</button>`).join("")}</div>
+   ${cash?`<label class="pos__inline">Recibido ($)<input id="posRec" type="number" min="0" inputmode="numeric" value="${esc(S.pos.received)}" placeholder="${t.total}"></label>
+     <div class="row"><span>Vuelto</span><b class="num" id="posChange">${rec>=t.total&&rec?clp(rec-t.total):"—"}</b></div>`:""}
+   <details class="pos__cli" ${S.pos.customer.email||S.pos.customer.name?"open":""}><summary>Datos del cliente (opcional)</summary>
+     <div class="form"><label class="full">Nombre<input id="posName" type="text" value="${esc(S.pos.customer.name||"")}"></label>
+     <label class="full">Correo (le enviamos el comprobante)<input id="posEmail" type="email" value="${esc(S.pos.customer.email||"")}"></label>
+     <label class="full">RUT<input id="posRut" type="text" value="${esc(S.pos.customer.rut||"")}"></label></div></details>
+   <div class="err" id="posErr" role="alert"></div>
+   <button class="cta wide" id="posPay" ${lines.length?"":"disabled"}>Cobrar ${clp(t.total)}</button>`;
+  el.querySelectorAll("[data-pq]").forEach(b=>b.onclick=()=>{const id=b.dataset.pq,q=(S.pos.items[id]||0)+ +b.dataset.d,p=posProd(id);if(q<=0)delete S.pos.items[id];else if(q>p.stock){toast(`Solo hay ${p.stock} en stock`);return}else S.pos.items[id]=q;posSave();posTicket()});
+  el.querySelectorAll("[data-pp]").forEach(b=>b.onclick=()=>{S.pos.payment=b.dataset.pp;posSave();posTicket()});
+  const disc=$("#posDisc");disc.onchange=()=>{S.pos.discount=disc.value;posSave();posTicket()};
+  const recI=$("#posRec");if(recI)recI.oninput=()=>{S.pos.received=recI.value;posSave();const v=Math.round(+recI.value||0),tt=posTotals().total;$("#posChange").textContent=v>=tt&&v?clp(v-tt):"—"};
+  ["posName","posEmail","posRut"].forEach(id=>{const i=$("#"+id);i.oninput=()=>{S.pos.customer={name:$("#posName").value,email:$("#posEmail").value,rut:$("#posRut").value};posSave()}});
+  const clr=$("#posClear");if(clr)clr.onclick=()=>{if(confirm("¿Vaciar el ticket?")){posReset();posTicket()}};
+  $("#posPay").onclick=posCharge;
+  // Barra fija en el celular con el total, para llegar al ticket sin bajar toda la lista.
+  const bar=$("#posBar");if(bar){const n=lines.reduce((a,x)=>a+x.q,0);bar.hidden=!n;bar.innerHTML=`<span>${n} producto${n===1?"":"s"} · <b class="num">${clp(t.total)}</b></span><span>Ver ticket →</span>`}
+}
+function posReset(){S.pos={items:{},payment:S.pos.payment,discount:"",received:"",customer:{}};posSave()}
+async function posCharge(){
+  const t=posTotals(),btn=$("#posPay"),err=$("#posErr");err.textContent="";
+  const rec=Math.round(+S.pos.received||0);if(S.pos.payment==="efectivo"&&rec&&rec<t.total){err.textContent="El monto recibido es menor que el total.";return}
+  if(!confirm(`¿Confirmas la venta por ${clp(t.total)} pagada con ${PAY_NAMES[S.pos.payment]}?`))return;
+  btn.disabled=true;btn.textContent="Registrando…";
+  try{
+    const r=await api("/api/admin/ventas-tienda",{method:"POST",body:{items:posLines().map(({p,q})=>({id:p.id,qty:q})),payment:S.pos.payment,discount:t.disc,received:S.pos.payment==="efectivo"?rec:0,customer:S.pos.customer}});
+    const o=r.order;S.orders.unshift(o);
+    for(const i of o.items){const p=posProd(i.id);if(p)p.stock-=i.qty}
+    posReset();
+    $("#posBar").hidden=true;
+    $("#posTicket").innerHTML=`<div class="ok-box"><b>Venta registrada · <span class="mono">${esc(o.id)}</span></b><br>Total ${clp(o.total)} · ${esc(PAY_NAMES[o.payment])}${o.paymentDetail?.change?`<br><span style="font-size:20px">Vuelto: <b>${clp(o.paymentDetail.change)}</b></span>`:""}${o.customer.email?`<br>Comprobante enviado a ${esc(o.customer.email)}`:""}</div>
+      <p class="note" style="margin:0">El stock ya se descontó en la tienda online.</p>
+      <div class="bar"><button class="btn" id="posPrint">Imprimir comprobante</button><button class="btn acc" id="posNew">Nueva venta</button></div>`;
+    $("#posNew").onclick=()=>admSell();
+    $("#posPrint").onclick=()=>posPrint(o);
+    const q=$("#posQ");if(q){q.value="";q.dispatchEvent(new Event("input"))}
+  }catch(e){err.textContent=e.message;btn.disabled=false;btn.textContent=`Cobrar ${clp(t.total)}`;if(e.status===409)refreshAdmin()}
+}
+function posPrint(o){
+  const w=window.open("","_blank","width=380,height=640");if(!w){toast("Permite las ventanas emergentes para imprimir");return}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.id)}</title><style>body{font:13px/1.45 monospace;margin:16px;color:#000}h1{font-size:16px;margin:0 0 4px;text-align:center}p{margin:2px 0;text-align:center}table{width:100%;border-collapse:collapse;margin:10px 0}td{padding:3px 0;vertical-align:top}td:last-child{text-align:right;white-space:nowrap}.t td{border-top:1px dashed #000;font-weight:bold;font-size:15px}</style></head><body>
+   <h1>DON DOG</h1><p>Pet shop · Candelaria Goyenechea 3820, local 165, Vitacura</p><p>${esc(new Date(o.createdAt).toLocaleString("es-CL"))} · N° ${esc(o.id)}</p>
+   <table>${o.items.map(i=>`<tr><td>${i.qty} × ${esc(i.name)}</td><td>${clp(i.qty*i.price)}</td></tr>`).join("")}
+   ${o.discount?`<tr><td>Descuento</td><td>−${clp(o.discount)}</td></tr>`:""}<tr class="t"><td>TOTAL</td><td>${clp(o.total)}</td></tr></table>
+   <p>Pago: ${esc(PAY_NAMES[o.payment])}${o.paymentDetail?.received?` · recibido ${clp(o.paymentDetail.received)} · vuelto ${clp(o.paymentDetail.change)}`:""}</p>
+   <p style="margin-top:10px">Comprobante interno, no válido como boleta.</p><p>¡Gracias por tu compra! @dondog.cl</p></body></html>`);
+  w.document.close();w.focus();w.print();
+}
+// Escáner con la cámara (Chrome en Android y otros navegadores con BarcodeDetector).
+async function posScanner(){
+  if(!("BarcodeDetector" in window)||!navigator.mediaDevices?.getUserMedia){toast("Este navegador no puede escanear. Usa Chrome en Android o un lector USB.");return}
+  let stream;try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}})}catch(e){toast("No se pudo abrir la cámara. Revisa los permisos.");return}
+  const ov=document.createElement("div");ov.className="pos__scan";ov.innerHTML=`<video playsinline muted></video><div class="pos__aim"></div><button class="btn" id="scanX">Cerrar</button><p>Apunta al código de barras</p>`;document.body.appendChild(ov);
+  const v=ov.querySelector("video");v.srcObject=stream;await v.play().catch(()=>{});
+  const det=new BarcodeDetector();let done=false;
+  const stop=()=>{done=true;stream.getTracks().forEach(t=>t.stop());ov.remove();$("#posQ")?.focus()};
+  ov.querySelector("#scanX").onclick=stop;
+  const loop=async()=>{if(done)return;try{const codes=await det.detect(v);if(codes.length){const code=codes[0].rawValue,p=S.adminProducts.find(x=>x.barcode===code);stop();if(p)posAdd(p.id);else{toast(`Código ${code} no está asignado a ningún producto`);const q=$("#posQ");if(q){q.value=code;q.dispatchEvent(new Event("input"))}}return}}catch(e){}setTimeout(loop,250)};loop();
 }
 function sold30(id){const from=Date.now()-30*864e5;return S.orders.filter(o=>o.paymentStatus==="pagado"&&o.createdAt>=from).reduce((s,o)=>s+o.items.filter(i=>i.id===id).reduce((a,i)=>a+i.qty,0),0)}
 function admStock(){

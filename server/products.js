@@ -20,7 +20,7 @@ const listProducts = async ({ includeInactive = false } = {}) =>
 const getProduct = async id => rowToProduct(await db.get("SELECT * FROM products WHERE id = ?", [String(id)]));
 const getBySlug = async slug => rowToProduct(await db.get("SELECT * FROM products WHERE slug = ? AND active = 1", [String(slug)]));
 
-function validate(b) {
+async function validate(b, id) {
   const str = (v, max) => String(v ?? "").trim().slice(0, max);
   const int = v => Math.max(0, Math.round(Number(v) || 0));
   const p = {
@@ -30,29 +30,32 @@ function validate(b) {
     price: int(b.price), oldPrice: int(b.oldPrice), description: str(b.description, 3000),
     tags: (Array.isArray(b.tags) ? b.tags : String(b.tags || "").split(",")).map(t => str(t, 40)).filter(Boolean).slice(0, 15),
     image: str(b.image, 500), featured: !!b.featured, active: b.active !== false, stock: int(b.stock),
+    barcode: str(b.barcode, 64).replace(/\s+/g, ""),
   };
   if (!p.name) throw Object.assign(new Error("El producto necesita nombre."), { status: 400 });
   if (!p.category) throw Object.assign(new Error("Categoría inválida."), { status: 400 });
   if (!(p.price > 0)) throw Object.assign(new Error("El precio debe ser mayor que 0."), { status: 400 });
+  if (p.barcode && await db.get("SELECT 1 FROM products WHERE barcode = ? AND id != ?", [p.barcode, id || ""]))
+    throw Object.assign(new Error("Ese código de barras ya está asignado a otro producto."), { status: 400 });
   if (p.image && !/^(\/uploads\/[\w.-]+|https:\/\/\S+)$/.test(p.image)) throw Object.assign(new Error("La imagen debe ser una foto subida o una URL https."), { status: 400 });
   return p;
 }
 
 async function saveProduct(body, id) {
-  const p = validate(body), now = Date.now();
+  const p = await validate(body, id), now = Date.now();
   if (id) {
     if (!await getProduct(id)) throw Object.assign(new Error("Producto no encontrado."), { status: 404 });
     await db.run(`UPDATE products SET slug=?, name=?, brand=?, category=?, pet=?, price=?, old_price=?, description=?, tags=?, image=?,
-      featured=?, active=?, stock=?, updated_at=? WHERE id=?`,
+      featured=?, active=?, stock=?, barcode=?, updated_at=? WHERE id=?`,
       [await uniqueSlug(p.name, id), p.name, p.brand, p.category, p.pet, p.price, p.oldPrice, p.description, JSON.stringify(p.tags), p.image,
-        p.featured ? 1 : 0, p.active ? 1 : 0, p.stock, now, id]);
+        p.featured ? 1 : 0, p.active ? 1 : 0, p.stock, p.barcode, now, id]);
     return getProduct(id);
   }
   const newId = body.id && /^[\w-]{2,40}$/.test(body.id) && !await getProduct(body.id) ? body.id : "p" + crypto.randomBytes(5).toString("hex");
-  await db.run(`INSERT INTO products(id, slug, name, brand, category, pet, price, old_price, description, tags, image, featured, active, stock, created_at, updated_at)
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  await db.run(`INSERT INTO products(id, slug, name, brand, category, pet, price, old_price, description, tags, image, featured, active, stock, barcode, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [newId, await uniqueSlug(p.name), p.name, p.brand, p.category, p.pet, p.price, p.oldPrice, p.description, JSON.stringify(p.tags), p.image,
-      p.featured ? 1 : 0, p.active ? 1 : 0, p.stock, now, now]);
+      p.featured ? 1 : 0, p.active ? 1 : 0, p.stock, p.barcode, now, now]);
   return getProduct(newId);
 }
 
