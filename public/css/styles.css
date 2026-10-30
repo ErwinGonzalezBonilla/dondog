@@ -436,3 +436,14 @@ header.top nav.cats .navpanel button:hover{background:var(--wood-soft);color:var
 .legal a,.check a{color:var(--accent)}
 a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--ink)}
 .order a{color:inherit}
+
+/* tarjetas de categoría: foto arriba e ícono pequeño junto al nombre */
+.catcard__img{display:block;aspect-ratio:16/10;overflow:hidden;background:var(--wood-deep)}
+.catcard__img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .4s ease}
+.catcard:hover .catcard__img img{transform:scale(1.05)}
+.catcard h3{display:flex;align-items:center;gap:10px}
+.catcard__mini{flex:none;display:inline-grid;place-items:center;width:30px;height:30px}
+.catcard__mini svg{width:100%;height:100%}
+.catcard__mini.c0{color:#F0558A}.catcard__mini.c1{color:#2CCDBC}.catcard__mini.c2{color:#3DBB85}.catcard__mini.c3{color:#FF6B66}
+@media (max-width:560px){.catcard__img{width:38%;flex:none;aspect-ratio:auto}.catcard__mini{width:24px;height:24px}}
+@media (prefers-reduced-motion:reduce){.catcard:hover .catcard__img img{transform:none}}

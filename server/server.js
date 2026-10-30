@@ -382,7 +382,7 @@ if (require.main === module) {
   app.listen(config.port, async () => {
     const st = systemStatus();
     console.log(`Don Dog lista en ${config.siteUrl} (puerto ${config.port})`);
-    console.log(`  Base de datos: ${process.env.TURSO_DATABASE_URL ? "Turso" : "archivo local"} · Fotos: ${useBlob ? "Vercel Blob" : "carpeta local"}`);
+    console.log(`  Base de datos: ${process.env.TURSO_DATABASE_URL || process.env.TURSO_URL ? "Turso" : "archivo local"} · Fotos: ${useBlob ? "Vercel Blob" : "carpeta local"}`);
     console.log(`  Webpay: ${st.webpay} · Mercado Pago: ${st.mercadopago ? "sí" : "no"} · Transferencia: ${st.transfer ? "sí" : "sin datos bancarios"}`);
     console.log(`  Correo SMTP: ${st.smtp ? "configurado" : "NO configurado (se guardan en la carpeta outbox)"} · Aviso al dueño: ${st.ownerEmail ? "sí" : "falta MAIL_OWNER_TO"} · IA: ${st.ai ? "sí" : "no"}`);
     if (!await db.get("SELECT 1 FROM admins LIMIT 1")) console.log("  ⚠ No hay administrador. Crea uno con: npm run crear-admin -- correo@dominio.cl");

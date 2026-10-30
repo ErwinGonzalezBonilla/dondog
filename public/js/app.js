@@ -106,7 +106,7 @@ function renderHome(){
   </div></section>
   <section class="oscura sec"><div class="wrap">
     <div class="cabecera"><div><p class="kicker">Categorías</p><h2 class="display h-xl">Todo para tu mascota</h2></div><p>Elige una categoría y mira lo que tenemos en stock ahora mismo en la tienda.</p></div>
-    <div class="cats-grid">${CATS.map((c,i)=>`<button class="catcard" data-cat="${c.id}"><span class="catcard__ico c${i%4}">${icon(c.d,1.6)}</span><span class="catcard__txt"><small class="num">${counts[c.id]} productos</small><h3>${esc(c.name)}</h3><p>${blurbs[c.id]}</p><span class="flecha">Ver ${esc(c.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}
+    <div class="cats-grid">${CATS.map((c,i)=>`<button class="catcard" data-cat="${c.id}"><span class="catcard__img"><img src="/img/categorias/${c.id}.jpg" alt="${esc(c.name)} en la tienda Don Dog" loading="lazy"></span><span class="catcard__txt"><small class="num">${counts[c.id]} productos</small><h3><span class="catcard__mini c${i%4}" aria-hidden="true">${icon(c.d,2)}</span>${esc(c.name)}</h3><p>${blurbs[c.id]}</p><span class="flecha">Ver ${esc(c.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}
       <button class="catcard catcard--all" data-cat="todo"><span class="catcard__txt"><small>Catálogo completo</small><h3>Ver todo</h3><p>${ps.length?ps.length+" productos con stock en vivo.":"Todo el catálogo con stock en vivo."}</p><span class="flecha">Entrar a la tienda →</span></span></button></div>
   </div></section>
   <section class="sec"><div class="wrap">
