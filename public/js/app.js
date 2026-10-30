@@ -134,15 +134,15 @@ function renderHome(){
     <div>${icon("M4 10l8-6 8 6v10H4zM10 20v-6h4v6")}<strong>Retiro gratis</strong><span>Lo Castillo, Vitacura</span></div>
     <div>${icon("M3 7h11v9H3zM14 10h4l3 3v3h-7")}<strong>Despacho ${S.config.slaHours} h</strong><span>Gratis sobre ${clp(S.config.freeShip)}</span></div>
   </div></section>
-  ${S.ai?`<section class="oscura sec"><div class="wrap contacto">
-    <div><p class="kicker">Asesor con IA</p><h2 class="display h-xl">¿No sabes qué elegir? Pregúntale al Don</h2>
-      <p class="contacto__p">Cuéntale la edad, el tamaño o lo que necesita tu mascota y te recomienda productos que tenemos en stock.</p>
-      <div class="cta-row"><button class="btn-pill acc" id="openChat2">Hablar con el Don</button><a class="btn-pill line" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener">Escríbenos por Instagram</a></div></div>
+  <section class="oscura sec"><div class="wrap contacto">
+    <div><p class="kicker">${S.ai?"Asesor con IA":"El Don te asesora"}</p><h2 class="display h-xl">¿No sabes qué elegir? Pregúntale al Don</h2>
+      <p class="contacto__p">${S.ai?"Cuéntale la edad, el tamaño o lo que necesita tu mascota y te recomienda productos que tenemos en stock.":"Cuéntanos la edad, el tamaño o lo que necesita tu mascota y te recomendamos lo mejor que tenemos en la tienda."}</p>
+      <div class="cta-row"><button class="btn-pill acc" id="openChat2">${S.ai?"Hablar con el Don":"Escríbele al Don"}</button><a class="btn-pill line" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener">Escríbenos por Instagram</a></div></div>
     <div class="donbox"><img class="donbox__img" src="${MASCOT}" alt="El Don, la mascota de Don Dog, en skate con sombrero y lentes" loading="lazy"><div class="chatprev"><div class="chatprev__cab"><img src="${MASCOT_SM}" alt="">El Don · asesor</div>
       <div class="msgp u">Mi bulldog francés se pone nervioso con los fuegos artificiales</div>
       <div class="msgp b">Para esas noches te sirve el collar calmante con feromonas. Póntelo unos días antes y dura hasta 4 semanas.</div>
       <div class="chipsp"><span>Cachorros</span><span>Gatos</span><span>Piel sensible</span></div></div></div>
-  </div></section>`:""}
+  </div></section>
   <section class="sec" id="contacto"><div class="wrap contacto">
     <div><p class="kicker">Contacto</p><h2 class="display h-xl">¿Tienes una duda? Escríbenos</h2>
       <p class="contacto__p">Te respondemos por correo dentro del día hábil. También puedes visitarnos en Candelaria Goyenechea 3820, local 165, Lo Castillo, Vitacura${S.store.hours?` (${esc(S.store.hours)})`:""}.</p>
@@ -159,7 +159,7 @@ function renderHome(){
       <button class="cta wide" id="ctSend">Enviar mensaje</button>
     </form>
   </div></section>`;
-  const oc=$("#openChat2");if(oc)oc.onclick=()=>{$("#chat").hidden=false;$("#chatIn").focus()};
+  $("#openChat2").onclick=openDon;
   $("#contactForm").onsubmit=sendContact;
 }
 async function sendContact(e){
@@ -378,7 +378,9 @@ function openLegal(k){const [t,f]=LEGAL[k];setPath("/"+k);drawer(esc(t),`<div cl
 function openPage(k){if(k==="seguimiento")openTracking();else if(LEGAL[k])openLegal(k);else if(k==="admin")openAdmin();else if(k==="contacto"){closeLayer();go("home");setTimeout(()=>$("#contacto")?.scrollIntoView({behavior:"smooth"}),50)}}
 
 /* ---------- AI ASSISTANT (cliente) ---------- */
-$("#fab").onclick=()=>{$("#chat").hidden=!$("#chat").hidden;if(!$("#chat").hidden)$("#chatIn").focus()};
+// El Don siempre está visible: con IA abre el chat; sin IA lleva al formulario de contacto.
+function openDon(){if(!S.ai){openPage("contacto");return}$("#chat").hidden=false;$("#chatIn").focus()}
+$("#fab").onclick=()=>{if(S.ai&&!$("#chat").hidden){$("#chat").hidden=true;return}openDon()};
 $("#chatX").onclick=()=>$("#chat").hidden=true;
 const chatHist=[];
 $("#chatForm").onsubmit=async e=>{
@@ -596,7 +598,7 @@ setInterval(()=>{if(S.adminTab==="pedidos"&&$("#admin")&&!$("#admin").hidden&&!d
 async function loadCatalog(){
   try{const r=await api("/api/catalog");S.products=r.products;Object.assign(S.config,r.config);S.payments=r.payments;S.store=r.store||{};S.ai=r.ai;S.loadError=false}
   catch(e){S.loadError=true}
-  S.loaded=true;$("#fab").hidden=!S.ai;fitCart();
+  S.loaded=true;$("#fab").hidden=false;fitCart();
   // No redibujar la portada si el cliente está escribiendo en el formulario de contacto.
   if(document.activeElement?.closest?.("#main form")){renderNav();updateCartBadge()}else render()
 }

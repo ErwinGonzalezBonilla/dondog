@@ -4,8 +4,11 @@ const path = require("node:path");
 const { createClient } = require("@libsql/client");
 const config = require("./config");
 
-const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || "file:" + (process.env.DB_FILE || path.join(config.dataDir, "tienda.db"));
+// Acepta los nombres de la integración de Turso en Vercel (prefijo TURSO: TURSO_URL / TURSO_AUTH_TOKEN) y los de Turso directo.
+const remoteUrl = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL;
+const url = remoteUrl || "file:" + (process.env.DB_FILE || path.join(config.dataDir, "tienda.db"));
 const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN || process.env.TURSO_DATABASE_AUTH_TOKEN || undefined });
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
