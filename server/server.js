@@ -201,6 +201,27 @@ admin.post("/login", rateLimit(30, 15 * 60e3), async (req, res) => {
   res.json({ ok: true, admin: { email: a.email, name: a.name } });
 });
 admin.post("/logout", (req, res) => { auth.clearSessionCookie(res); res.json({ ok: true }); });
+
+// Primer ingreso: crear el administrador desde la web cuando aún no existe ninguno.
+// Requiere la clave ADMIN_SETUP_KEY definida en las variables de entorno del servidor.
+const setupKey = () => (process.env.ADMIN_SETUP_KEY || "").trim();
+admin.get("/setup", async (req, res) => {
+  const none = !(await db.get("SELECT 1 FROM admins LIMIT 1"));
+  res.json({ needed: none, enabled: none && setupKey().length >= 8 });
+});
+admin.post("/setup", rateLimit(10, 15 * 60e3), async (req, res) => {
+  const b = req.body || {}, key = setupKey();
+  if (await db.get("SELECT 1 FROM admins LIMIT 1")) return res.status(409).json({ error: "Ya existe un administrador. Inicia sesión." });
+  if (key.length < 8) return res.status(403).json({ error: "Falta configurar ADMIN_SETUP_KEY en el servidor." });
+  const given = String(b.key || "").trim();
+  if (given.length !== key.length || !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(key))) return res.status(403).json({ error: "La clave de activación no es correcta." });
+  const email = String(b.email || "").trim().toLowerCase(), pass = String(b.password || "");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ error: "Ingresa un correo válido." });
+  if (pass.length < 10) return res.status(400).json({ error: "La contraseña debe tener al menos 10 caracteres." });
+  const r = await auth.createAdmin(email, pass, String(b.name || "").slice(0, 80));
+  auth.setSessionCookie(res, r.id);
+  res.json({ ok: true, admin: { email, name: b.name || "" } });
+});
 admin.get("/me", async (req, res) => {
   const a = await auth.currentAdmin(req);
   if (!a) return res.status(401).json({ error: "Sin sesión." });

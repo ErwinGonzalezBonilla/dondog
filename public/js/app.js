@@ -406,8 +406,10 @@ async function openAdmin(){
   let a=$("#admin");if(!a){a=document.createElement("div");a.id="admin";a.className="admin";document.body.appendChild(a)}a.hidden=false;
   await refreshAdmin();
 }
-function openLogin(){
+async function openLogin(){
   setPath("/admin");
+  let st={};try{st=await api("/api/admin/setup")}catch(e){}
+  if(st.needed)return openSetup(st.enabled);
   drawer("Acceso dueño",`<form class="dbody" id="loginForm" novalidate>
     <img src="${LOGO}" alt="" style="width:72px;align-self:center">
     <div class="form"><label class="full">Correo<input id="lEmail" type="email" autocomplete="username" required></label><label class="full">Contraseña<input id="lPass" type="password" autocomplete="current-password" required></label></div>
@@ -416,6 +418,25 @@ function openLogin(){
   $("#loginForm").onsubmit=async e=>{e.preventDefault();const btn=$("#lBtn");btn.disabled=true;$("#lErr").textContent="";
     try{const r=await api("/api/admin/login",{method:"POST",body:{email:$("#lEmail").value,password:$("#lPass").value}});S.admin=r.admin;openAdmin()}
     catch(ex){$("#lErr").textContent=ex.message;btn.disabled=false}};
+}
+// Primer ingreso: crear la cuenta del dueño (solo funciona si aún no hay administradores).
+function openSetup(enabled){
+  drawer("Crear cuenta del dueño",enabled?`<form class="dbody" id="setupForm" novalidate>
+    <img src="${LOGO}" alt="" style="width:72px;align-self:center">
+    <p class="note" style="margin:0">Es el primer ingreso al panel. Crea tu cuenta de administrador. La <b>clave de activación</b> es la que pusiste en Vercel como <span class="mono">ADMIN_SETUP_KEY</span>.</p>
+    <div class="form"><label class="full">Clave de activación<input id="sKey" type="password" autocomplete="off"></label>
+    <label class="full">Tu nombre<input id="sName" type="text" autocomplete="name"></label>
+    <label class="full">Correo<input id="sEmail" type="email" autocomplete="username"></label>
+    <label class="full">Contraseña (mín. 10 caracteres)<input id="sPass" type="password" autocomplete="new-password"></label>
+    <label class="full">Repite la contraseña<input id="sPass2" type="password" autocomplete="new-password"></label></div>
+    <div class="err" id="sErr" role="alert"></div><button class="cta wide" id="sBtn">Crear cuenta y entrar</button></form>`
+   :`<div class="dbody"><p style="margin:0">Todavía no hay una cuenta de administrador.</p><p class="note" style="margin:0">Para crearla, agrega la variable <span class="mono">ADMIN_SETUP_KEY</span> en Vercel (Settings → Environment Variables) con una clave de al menos 8 caracteres, vuelve a publicar y recarga esta página.</p></div>`);
+  const f=$("#setupForm");if(!f)return;$("#sKey").focus();
+  f.onsubmit=async e=>{e.preventDefault();const err=$("#sErr"),btn=$("#sBtn");err.textContent="";
+    if($("#sPass").value!==$("#sPass2").value){err.textContent="Las contraseñas no coinciden.";return}
+    btn.disabled=true;
+    try{const r=await api("/api/admin/setup",{method:"POST",body:{key:$("#sKey").value,name:$("#sName").value,email:$("#sEmail").value,password:$("#sPass").value}});S.admin=r.admin;toast("Cuenta creada");openAdmin()}
+    catch(ex){err.textContent=ex.message;btn.disabled=false}};
 }
 function closeAdmin(){const a=$("#admin");if(a)a.hidden=true;setPath("/");loadCatalog()}
 async function refreshAdmin(){

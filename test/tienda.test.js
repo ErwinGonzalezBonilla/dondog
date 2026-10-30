@@ -149,3 +149,10 @@ test("venta en tienda: descuenta stock, calcula vuelto y aparece en el Excel", a
   await call("PATCH", `/api/admin/orders/${r.json.order.id}`, { status: "cancelado" }, { admin: true });
   assert.equal(await stockOf("a1"), 4);
 });
+
+test("primer ingreso: solo crea administrador si no existe ninguno", async () => {
+  const st = await call("GET", "/api/admin/setup");
+  assert.equal(st.json.needed, false);
+  const r = await call("POST", "/api/admin/setup", { key: "x", email: "otro@test.cl", password: "claveSegura123" });
+  assert.equal(r.status, 409);
+});
