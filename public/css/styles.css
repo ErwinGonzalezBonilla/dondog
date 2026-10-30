@@ -487,10 +487,3 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--in
   .abar{flex-wrap:wrap}.abar .x{margin-left:auto}
 }
 @media (max-width:860px){body:has(.pos__bar:not([hidden])) .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
-
-/* menú de categorías: una sola fila deslizable en el celular */
-@media (max-width:720px){
-  header.top nav.cats .wrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,#000 88%,transparent)}
-  header.top nav.cats .wrap::-webkit-scrollbar{display:none}
-  header.top nav.cats .navtop{flex:none;white-space:nowrap}
-}
