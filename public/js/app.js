@@ -79,6 +79,15 @@ function renderHome(){
   const counts=Object.fromEntries(GROUPS.map(g=>[g.id,ps.filter(p=>g.cats.includes(p.category)).length]));
   const payTxt=[S.payments.webpay&&"Webpay",S.payments.mercadopago&&"Mercado Pago",S.payments.transferencia&&"transferencia"].filter(Boolean);
   $("#main").innerHTML=`
+  <section class="oscura sec"><div class="wrap contacto">
+    <div><p class="kicker">${S.ai?"Asesor con IA":"El Don te asesora"}</p><h2 class="display h-xl">¿No sabes qué elegir? Pregúntale al Don</h2>
+      <p class="contacto__p">${S.ai?"Cuéntale la edad, el tamaño o lo que necesita tu mascota y te recomienda productos que tenemos en stock.":"Cuéntanos la edad, el tamaño o lo que necesita tu mascota y te recomendamos lo mejor que tenemos en la tienda."}</p>
+      <div class="cta-row"><button class="btn-pill acc" id="openChat2">${S.ai?"Hablar con el Don":"Escríbele al Don"}</button><a class="btn-pill line" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener">Escríbenos por Instagram</a></div></div>
+    <div class="donbox"><img class="donbox__img" src="${MASCOT}" alt="El Don, la mascota de Don Dog, en skate con sombrero y lentes" fetchpriority="high"><div class="chatprev"><div class="chatprev__cab"><img src="${MASCOT_SM}" alt="">El Don · asesor</div>
+      <div class="msgp u">Mi bulldog francés se pone nervioso con los fuegos artificiales</div>
+      <div class="msgp b">Para esas noches te sirve el collar calmante con feromonas. Póntelo unos días antes y dura hasta 4 semanas.</div>
+      <div class="chipsp"><span>Cachorros</span><span>Gatos</span><span>Piel sensible</span></div></div></div>
+  </div></section>
   <section class="hero2"><div class="wrap hero2__in">
     <div class="hero2__txt">
       <span class="pill-dark">Nuevo · <b>Compra online</b> y retira en tienda</span>
@@ -118,15 +127,6 @@ function renderHome(){
     <button data-cat="todo">${icon("M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L20 8H6.2")}<strong>Tienda online</strong><span>Stock en vivo</span></button>
     <div>${icon("M4 10l8-6 8 6v10H4zM10 20v-6h4v6")}<strong>Retiro gratis</strong><span>Lo Castillo, Vitacura</span></div>
     <div>${icon("M3 7h11v9H3zM14 10h4l3 3v3h-7")}<strong>Despacho ${S.config.slaHours} h</strong><span>Gratis sobre ${clp(S.config.freeShip)}</span></div>
-  </div></section>
-  <section class="oscura sec"><div class="wrap contacto">
-    <div><p class="kicker">${S.ai?"Asesor con IA":"El Don te asesora"}</p><h2 class="display h-xl">¿No sabes qué elegir? Pregúntale al Don</h2>
-      <p class="contacto__p">${S.ai?"Cuéntale la edad, el tamaño o lo que necesita tu mascota y te recomienda productos que tenemos en stock.":"Cuéntanos la edad, el tamaño o lo que necesita tu mascota y te recomendamos lo mejor que tenemos en la tienda."}</p>
-      <div class="cta-row"><button class="btn-pill acc" id="openChat2">${S.ai?"Hablar con el Don":"Escríbele al Don"}</button><a class="btn-pill line" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener">Escríbenos por Instagram</a></div></div>
-    <div class="donbox"><img class="donbox__img" src="${MASCOT}" alt="El Don, la mascota de Don Dog, en skate con sombrero y lentes" loading="lazy"><div class="chatprev"><div class="chatprev__cab"><img src="${MASCOT_SM}" alt="">El Don · asesor</div>
-      <div class="msgp u">Mi bulldog francés se pone nervioso con los fuegos artificiales</div>
-      <div class="msgp b">Para esas noches te sirve el collar calmante con feromonas. Póntelo unos días antes y dura hasta 4 semanas.</div>
-      <div class="chipsp"><span>Cachorros</span><span>Gatos</span><span>Piel sensible</span></div></div></div>
   </div></section>
   <section class="sec" id="contacto"><div class="wrap contacto">
     <div><p class="kicker">Contacto</p><h2 class="display h-xl">¿Tienes una duda? Escríbenos</h2>
