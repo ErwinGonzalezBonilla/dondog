@@ -48,34 +48,20 @@ function availHTML(id){const n=stockOf(id);if(n<=0)return `<span class="avail ou
 function active(){return S.products}
 
 /* ---------- STORE VIEWS ---------- */
-const NAV=[
- {id:"perros",name:"Perros",pet:"perro",items:["alimentos","snacks","juguetes","accesorios","ropa","cosmetica","salud"]},
- {id:"gatos",name:"Gatos",pet:"gato",items:["alimentos","snacks","juguetes","accesorios","cosmetica","salud"]},
- {id:"alim",name:"Alimentación",items:["alimentos","snacks"]},
- {id:"acc",name:"Accesorios y juguetes",items:["accesorios","juguetes","ropa"]},
- {id:"cuid",name:"Cuidado y salud",items:["cosmetica","salud"]},
- {id:"ofertas",name:"Ofertas",deals:true}];
-const groupById=Object.fromEntries(NAV.map(g=>[g.id,g]));
-let navOpen=null;
-function navOn(g){if(S.view!=="catalog")return false;if(g.deals)return !!S.deals;if(g.pet)return S.pet===g.pet;return S.cat==="g:"+g.id||(!S.pet&&g.items.includes(S.cat))}
+// Grupos que ve el cliente: cada uno junta varias categorías internas de los productos.
+const GROUPS=[
+ {id:"alimentos",name:"Alimentos y snacks",cats:["alimentos","snacks"],d:catById.alimentos.d,img:"alimentos",blurb:"Alimento seco y húmedo de marcas premium, premios naturales y snacks dentales."},
+ {id:"juguetes",name:"Juguetes y accesorios",cats:["juguetes","accesorios","ropa"],d:catById.juguetes.d,img:"juguetes",blurb:"Pelotas y mordedores, correas, arneses, camas y ropa para el frío."},
+ {id:"cuidado",name:"Cuidado y salud",cats:["cosmetica","salud"],d:catById.salud.d,img:"salud",blurb:"Shampoo, colonias, calmantes y todo para el bienestar diario."}];
+const groupById=Object.fromEntries(GROUPS.map(g=>[g.id,g]));
+const groupOfCat=Object.fromEntries(GROUPS.flatMap(g=>g.cats.map(c=>[c,g.id])));
+// Acepta un grupo o una categoría interna (enlaces antiguos) y devuelve el grupo.
+const toGroup=c=>!c||c==="todo"?"todo":groupById[c]?c:groupOfCat[c]||"todo";
+const NAV=[{id:"perros",name:"Perros",pet:"perro"},{id:"gatos",name:"Gatos",pet:"gato"},...GROUPS.map(g=>({id:g.id,name:g.name,group:g.id})),{id:"ofertas",name:"Ofertas",deals:true}];
+function navOn(g){if(S.view!=="catalog"||S.q)return false;if(g.deals)return !!S.deals;if(g.pet)return S.pet===g.pet&&toGroup(S.cat)==="todo"&&!S.deals;return toGroup(S.cat)===g.group&&!S.deals}
 function renderNav(){
-  const cnt=(c,pet)=>active().filter(p=>p.category===c&&(!pet||p.pet===pet||p.pet==="todos")).length;
-  $("#catNav").innerHTML=NAV.map(g=>g.deals
-    ?`<button class="navtop deals ${navOn(g)?"on":""}" data-nav="todo||1">${esc(g.name)}</button>`
-    :`<div class="navgrp"><button class="navtop ${navOn(g)?"on":""}" data-grp="${g.id}" aria-expanded="${navOpen===g.id}">${esc(g.name)}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></button>
-      <div class="navpanel" ${navOpen===g.id?"":"hidden"}>
-        <button class="navall" data-nav="${g.pet?"todo|"+g.pet:"g:"+g.id+"|"}">Ver todo ${esc(g.name.toLowerCase())} →</button>
-        ${g.items.map((c,i)=>`<button class="navitem" data-nav="${c}|${g.pet||""}"><span class="navico c${i%4}">${icon(catById[c].d,1.8)}</span><span>${esc(catById[c].name)}<small class="num">${cnt(c,g.pet)} productos</small></span></button>`).join("")}
-      </div></div>`).join("");
-  const open=$("#catNav .navgrp [aria-expanded=true]");
-  if(open){const panel=open.nextElementSibling,nav=$("nav.cats").getBoundingClientRect(),b=open.getBoundingClientRect(),w=Math.min(panel.offsetWidth,nav.width-32);panel.style.left=Math.max(16,Math.min(b.left-nav.left,nav.width-w-16))+"px"}
+  $("#catNav").innerHTML=NAV.map(g=>`<button class="navtop ${g.deals?"deals":""} ${navOn(g)?"on":""}" data-nav="${g.group||"todo"}|${g.pet||""}|${g.deals?1:""}">${esc(g.name)}</button>`).join("");
 }
-document.addEventListener("click",e=>{
-  const g=e.target.closest("[data-grp]");
-  if(g){navOpen=navOpen===g.dataset.grp?null:g.dataset.grp;renderNav();return}
-  if(navOpen&&!e.target.closest(".navpanel")){navOpen=null;renderNav()}
-});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&navOpen){navOpen=null;renderNav()}});
 function card(p){
   const n=p.stock,sale=p.oldPrice&&p.oldPrice>p.price?Math.round((1-p.price/p.oldPrice)*100):0;
   return `<article class="card">
@@ -89,8 +75,7 @@ function card(p){
 function emptyCatalog(){return `<div class="empty"><b>Todavía no hay productos publicados</b>${S.admin?"Abre <b style='display:inline'>Admin → Productos</b> para cargar el primero.":S.loadError?"No pudimos cargar el catálogo. Revisa tu conexión y recarga la página.":"Vuelve pronto: estamos cargando el catálogo."}</div>`}
 function renderHome(){
   const ps=active(),feat=ps.filter(p=>p.featured).slice(0,8),deals=ps.filter(p=>p.oldPrice>p.price).slice(0,4);
-  const counts=Object.fromEntries(CATS.map(c=>[c.id,ps.filter(p=>p.category===c.id).length]));
-  const blurbs={alimentos:"Pienso seco y húmedo de marcas premium para cada etapa.",snacks:"Premios naturales, dentales y de entrenamiento.",juguetes:"Pelotas, mordedores y juegos para gatos activos.",accesorios:"Correas, arneses, camas y collares de recuperación.",cosmetica:"Shampoo, colonias y cuidado del pelaje.",salud:"Calmantes, antiparasitarios y bienestar diario.",ropa:"Chalecos, botas y abrigo para el invierno."};
+  const counts=Object.fromEntries(GROUPS.map(g=>[g.id,ps.filter(p=>g.cats.includes(p.category)).length]));
   const payTxt=[S.payments.webpay&&"Webpay",S.payments.mercadopago&&"Mercado Pago",S.payments.transferencia&&"transferencia"].filter(Boolean);
   $("#main").innerHTML=`
   <section class="hero2"><div class="wrap hero2__in">
@@ -99,14 +84,14 @@ function renderHome(){
       <p class="kicker">Pet shop · Vitacura</p>
       <h1 class="display">Consentir a tu mascota es cosa de Dones</h1>
       <p class="hero2__eslogan">Todo para perros y gatos, <span>listo en ${S.config.slaHours} horas.</span></p>
-      <div class="cta-row"><button class="btn-pill acc" data-cat="todo">Ver productos</button><button class="btn-pill line" data-cat="alimentos">Alimentos</button></div>
+      <div class="cta-row"><button class="btn-pill acc" data-cat="todo">Ver productos</button><button class="btn-pill line" data-cat="alimentos">Alimentos y snacks</button></div>
       <div class="hero2__redes"><span>Síguenos</span><a class="redes1 light" href="https://www.instagram.com/dondog.cl/" target="_blank" rel="noopener" aria-label="Instagram">${IG}</a><span class="mono">@dondog.cl</span></div>
     </div>
     <figure class="hero2__foto"><img src="/img/tienda.webp" alt="Interior de la tienda Don Dog con huellas de colores en el piso"></figure>
   </div></section>
   <section class="oscura sec"><div class="wrap">
     <div class="cabecera"><div><p class="kicker">Categorías</p><h2 class="display h-xl">Todo para tu mascota</h2></div><p>Elige una categoría y mira lo que tenemos en stock ahora mismo en la tienda.</p></div>
-    <div class="cats-grid">${CATS.map((c,i)=>`<button class="catcard" data-cat="${c.id}"><span class="catcard__img"><img src="/img/categorias/${c.id}.svg" alt="" loading="lazy"></span><span class="catcard__txt"><small class="num">${counts[c.id]} productos</small><h3><span class="catcard__mini c${i%4}" aria-hidden="true">${icon(c.d,2)}</span>${esc(c.name)}</h3><p>${blurbs[c.id]}</p><span class="flecha">Ver ${esc(c.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}
+    <div class="cats-grid">${GROUPS.map((g,i)=>`<button class="catcard" data-cat="${g.id}"><span class="catcard__img"><img src="/img/categorias/${g.img}.svg" alt="" loading="lazy"></span><span class="catcard__txt"><small class="num">${counts[g.id]} productos</small><h3><span class="catcard__mini c${i%4}" aria-hidden="true">${icon(g.d,2)}</span>${esc(g.name)}</h3><p>${g.blurb}</p><span class="flecha">Ver ${esc(g.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}
       <button class="catcard catcard--all" data-cat="todo"><span class="catcard__txt"><small>Catálogo completo</small><h3>Ver todo</h3><p>${ps.length?ps.length+" productos con stock en vivo.":"Todo el catálogo con stock en vivo."}</p><span class="flecha">Entrar a la tienda →</span></span></button></div>
   </div></section>
   <section class="sec"><div class="wrap">
@@ -172,20 +157,19 @@ async function sendContact(e){
 }
 function filtered(){
   let ps=active();
-  if(S.cat&&S.cat.startsWith("g:")){const it=groupById[S.cat.slice(2)].items;ps=ps.filter(p=>it.includes(p.category))}
-  else if(S.cat&&S.cat!=="todo")ps=ps.filter(p=>p.category===S.cat);
+  const g=toGroup(S.cat);if(g!=="todo"){const it=groupById[g].cats;ps=ps.filter(p=>it.includes(p.category))}
   if(S.deals)ps=ps.filter(p=>p.oldPrice>p.price);
   if(S.pet)ps=ps.filter(p=>p.pet===S.pet||p.pet==="todos");
-  if(S.q){const t=S.q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");ps=ps.filter(p=>(p.name+" "+(p.brand||"")+" "+(p.tags||[]).join(" ")+" "+(catById[p.category]?.name||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(t))}
+  if(S.q){const t=S.q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");ps=ps.filter(p=>(p.name+" "+(p.brand||"")+" "+(p.tags||[]).join(" ")+" "+(catById[p.category]?.name||"")+" "+(groupById[groupOfCat[p.category]]?.name||"")).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(t))}
   const by={featured:(a,b)=>(b.featured?1:0)-(a.featured?1:0)||a.name.localeCompare(b.name),asc:(a,b)=>a.price-b.price,desc:(a,b)=>b.price-a.price,stock:(a,b)=>b.stock-a.stock};
   return ps.slice().sort(by[S.sort]);
 }
 function renderCatalog(){
-  const ps=filtered(),title=S.q?`“${S.q}”`:S.deals?"Ofertas":S.cat&&S.cat.startsWith("g:")?groupById[S.cat.slice(2)].name:((S.cat&&S.cat!=="todo"?catById[S.cat].name:"")+(S.pet?(S.cat&&S.cat!=="todo"?" para ":"")+PETS.find(p=>p.id===S.pet).name.toLowerCase():"")||"Todos los productos").replace(/^./,c=>c.toUpperCase());
+  const ps=filtered(),g=toGroup(S.cat),title=S.q?`“${S.q}”`:S.deals?"Ofertas":((g!=="todo"?groupById[g].name:"")+(S.pet?(g!=="todo"?" para ":"")+PETS.find(p=>p.id===S.pet).name.toLowerCase():"")||"Todos los productos").replace(/^./,c=>c.toUpperCase());
   $("#main").innerHTML=`<section class="block wrap">
    <div class="shead"><div><p class="eyebrow">${S.q?"Resultados de búsqueda":"Catálogo"}</p><h2 class="display">${esc(title)}</h2></div></div>
    <div class="catalog"><aside class="filters">
-     <div class="fgroup"><span class="eyebrow">Categoría</span><div class="chips">${[["todo","Todo"],...CATS.map(c=>[c.id,c.name])].map(([id,n])=>`<button class="chip ${(S.cat||"todo")===id?"on":""}" data-fcat="${id}">${esc(n)}</button>`).join("")}</div></div>
+     <div class="fgroup"><span class="eyebrow">Categoría</span><div class="chips">${[["todo","Todo"],...GROUPS.map(x=>[x.id,x.name])].map(([id,n])=>`<button class="chip ${g===id?"on":""}" data-fcat="${id}">${esc(n)}</button>`).join("")}</div></div>
      <div class="fgroup"><span class="eyebrow">Mascota</span><div class="chips"><button class="chip ${!S.pet?"on":""}" data-fpet="">Todas</button>${PETS.map(p=>`<button class="chip ${S.pet===p.id?"on":""}" data-fpet="${p.id}">${p.name}</button>`).join("")}</div></div>
    </aside><div style="min-width:0">
      <div class="toolbar"><span class="note num">${ps.length} producto${ps.length===1?"":"s"}</span>
@@ -195,15 +179,15 @@ function renderCatalog(){
   $("#sort").value=S.sort;
 }
 function render(){renderNav();if(S.view==="catalog")renderCatalog();else renderHome();updateCartBadge()}
-function go(view,opts={}){Object.assign(S,{view},opts);render();window.scrollTo({top:0})}
+function go(view,opts={}){if("cat" in opts&&opts.cat)opts.cat=toGroup(opts.cat);Object.assign(S,{view},opts);render();window.scrollTo({top:0})}
 
 document.addEventListener("click",e=>{
   const t=e.target.closest("[data-nav],[data-cat],[data-pet],[data-fcat],[data-fpet],[data-add],[data-open],[data-goto]");if(!t)return;
-  if(t.dataset.nav!==undefined){const [c,p,d]=t.dataset.nav.split("|");navOpen=null;S.q="";$("#q").value="";go("catalog",{cat:c||"todo",pet:p||null,deals:!!d});return}
+  if(t.dataset.nav!==undefined){const [c,p,d]=t.dataset.nav.split("|");S.q="";$("#q").value="";go("catalog",{cat:c||"todo",pet:p||null,deals:!!d});return}
   if(t.dataset.goto!==undefined){e.preventDefault();openPage(t.dataset.goto);return}
   if(t.dataset.cat!==undefined){S.q="";$("#q").value="";closeLayer();go("catalog",{cat:t.dataset.cat,pet:null,deals:false})}
   else if(t.dataset.pet!==undefined){S.q="";$("#q").value="";go("catalog",{pet:t.dataset.pet,cat:"todo",deals:false})}
-  else if(t.dataset.fcat!==undefined){S.cat=t.dataset.fcat;S.deals=false;render()}
+  else if(t.dataset.fcat!==undefined){S.cat=toGroup(t.dataset.fcat);S.deals=false;render()}
   else if(t.dataset.fpet!==undefined){S.pet=t.dataset.fpet||null;render()}
   else if(t.dataset.add!==undefined){addToCart(t.dataset.add,1)}
   else if(t.dataset.open!==undefined){e.preventDefault();openProduct(t.dataset.open)}
@@ -514,7 +498,7 @@ function productForm(id){
    <div class="split"><div class="form">
     <label class="full">Nombre<input id="pName" type="text" value="${esc(p.name)}"></label>
     <label>Marca<input id="pBrand" type="text" value="${esc(p.brand)}"></label>
-    <label>Categoría<select id="pCat">${CATS.map(c=>`<option value="${c.id}" ${c.id===p.category?"selected":""}>${c.name}</option>`).join("")}</select></label>
+    <label>Categoría<select id="pCat">${GROUPS.map(g=>`<optgroup label="${esc(g.name)}">${g.cats.map(id=>`<option value="${id}" ${id===p.category?"selected":""}>${esc(catById[id].name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
     <label>Mascota<select id="pPet">${[...PETS,{id:"todos",name:"Todas"}].map(x=>`<option value="${x.id}" ${x.id===p.pet?"selected":""}>${x.name}</option>`).join("")}</select></label>
     <label>Stock<input id="pStock" type="number" min="0" value="${p.stock||0}"></label>
     <label>Precio (CLP)<input id="pPrice" type="number" min="0" value="${esc(p.price)}"></label>
