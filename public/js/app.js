@@ -51,8 +51,9 @@ function active(){return S.products}
 // Grupos que ve el cliente: cada uno junta varias categorías internas de los productos.
 const GROUPS=[
  {id:"alimentos",name:"Alimentos y snacks",cats:["alimentos","snacks"],d:catById.alimentos.d,img:"alimentos",blurb:"Alimento seco y húmedo de marcas premium, premios naturales y snacks dentales."},
- {id:"juguetes",name:"Juguetes y accesorios",cats:["juguetes","accesorios","ropa"],d:catById.juguetes.d,img:"juguetes",blurb:"Pelotas y mordedores, correas, arneses, camas y ropa para el frío."},
- {id:"cuidado",name:"Cuidado y salud",cats:["cosmetica","salud"],d:catById.salud.d,img:"salud",blurb:"Shampoo, colonias, calmantes y todo para el bienestar diario."}];
+ {id:"juguetes",name:"Juguetes",cats:["juguetes"],d:catById.juguetes.d,img:"juguetes",blurb:"Pelotas, mordedores, cuerdas y juegos para perros y gatos activos."},
+ {id:"accesorios",name:"Accesorios y ropa",cats:["accesorios","ropa"],d:catById.accesorios.d,img:"accesorios",blurb:"Correas, arneses, collares, camas, chalecos y abrigo para el frío."},
+ {id:"cuidado",name:"Cosmética y salud",cats:["cosmetica","salud"],d:catById.salud.d,img:"salud",blurb:"Shampoo, colonias, calmantes, antiparasitarios y bienestar diario."}];
 const groupById=Object.fromEntries(GROUPS.map(g=>[g.id,g]));
 const groupOfCat=Object.fromEntries(GROUPS.flatMap(g=>g.cats.map(c=>[c,g.id])));
 // Acepta un grupo o una categoría interna (enlaces antiguos) y devuelve el grupo.
@@ -90,9 +91,8 @@ function renderHome(){
     <figure class="hero2__foto"><img src="/img/tienda.webp" alt="Interior de la tienda Don Dog con huellas de colores en el piso"></figure>
   </div></section>
   <section class="oscura sec"><div class="wrap">
-    <div class="cabecera"><div><p class="kicker">Categorías</p><h2 class="display h-xl">Todo para tu mascota</h2></div><p>Elige una categoría y mira lo que tenemos en stock ahora mismo en la tienda.</p></div>
-    <div class="cats-grid">${GROUPS.map((g,i)=>`<button class="catcard" data-cat="${g.id}"><span class="catcard__img"><img src="/img/categorias/${g.img}.svg" alt="" loading="lazy"></span><span class="catcard__txt"><small class="num">${counts[g.id]} productos</small><h3><span class="catcard__mini c${i%4}" aria-hidden="true">${icon(g.d,2)}</span>${esc(g.name)}</h3><p>${g.blurb}</p><span class="flecha">Ver ${esc(g.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}
-      <button class="catcard catcard--all" data-cat="todo"><span class="catcard__txt"><small>Catálogo completo</small><h3>Ver todo</h3><p>${ps.length?ps.length+" productos con stock en vivo.":"Todo el catálogo con stock en vivo."}</p><span class="flecha">Entrar a la tienda →</span></span></button></div>
+    <div class="cabecera"><div><p class="kicker">Categorías</p><h2 class="display h-xl">Todo para tu mascota</h2></div><button class="flecha" data-cat="todo">Ver todo →</button></div>
+    <div class="cats-grid">${GROUPS.map((g,i)=>`<button class="catcard" data-cat="${g.id}"><span class="catcard__img"><img src="/img/categorias/${g.img}.svg" alt="" loading="lazy"></span><span class="catcard__txt"><small class="num">${counts[g.id]} productos</small><h3><span class="catcard__mini c${i%4}" aria-hidden="true">${icon(g.d,2)}</span>${esc(g.name)}</h3><p>${g.blurb}</p><span class="flecha">Ver ${esc(g.name.split(" ")[0].toLowerCase())} →</span></span></button>`).join("")}</div>
   </div></section>
   <section class="sec"><div class="wrap">
     <div class="cabecera"><div><p class="kicker">Lo más pedido</p><h2 class="display h-xl">Destacados</h2></div><button class="flecha" data-cat="todo">Ver todo →</button></div>
